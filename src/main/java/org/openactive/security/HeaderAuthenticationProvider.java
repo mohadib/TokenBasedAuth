@@ -1,6 +1,7 @@
 package org.openactive.security;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -28,6 +29,12 @@ public class HeaderAuthenticationProvider implements AuthenticationProvider
   @Autowired
   private Properties apiProperties;
 
+  @Value("${ttl}")
+  private int ttl;
+
+  @Value("${delim}")
+  private String delim;
+
   @Override
   public Authentication authenticate(Authentication authentication) throws AuthenticationException
   {
@@ -42,7 +49,6 @@ public class HeaderAuthenticationProvider implements AuthenticationProvider
     return fullAuth;
   }
 
-
   /**
    * tokens [ username : (salt)timestamp : md5hex( userName : timestamp : userKey : systemKey )
    *
@@ -56,10 +62,19 @@ public class HeaderAuthenticationProvider implements AuthenticationProvider
     String timestamp = tokens[1];
     String hexed = tokens[2];
 
-    String systemKey = apiProperties.getProperty("key");
-    String userKey = apiProperties.getProperty(userName);
+    // is timestamp older than 3 seconds?!
+    long timeDelta = System.currentTimeMillis() - Long.parseLong( timestamp );
+    System.out.println(timeDelta);
+    if( timeDelta > ttl )
+    {
+      System.out.println("TOO OLD " + timeDelta);
+      return false;
+    }
 
-    String rebuiltKey = encode(String.join(":", userName, timestamp, userKey, systemKey));
+    String systemKey = apiProperties.getProperty("key");
+    String userKey = apiProperties.getProperty("user." + userName);
+
+    String rebuiltKey = encode(String.join(delim, userName, timestamp, userKey, systemKey));
     return rebuiltKey.equals(hexed);
   }
 
