@@ -7,7 +7,7 @@
     <security:global-method-security secured-annotations="enabled" />
 
     <security:authentication-manager id="authenticationManager">
-        <security:authentication-provider ref="headerAuthenticationProvider" />
+        <security:authentication-provider ref="headerAuthenticationProvider"/>
         <security:authentication-provider>
             <security:user-service>
                 <security:user name="jimi" password="jimispassword" authorities="ROLE_USER, ROLE_ADMIN" />
@@ -17,7 +17,7 @@
     </security:authentication-manager>
 
     <bean id="headerRequestMatcher" class="org.openactive.security.HeaderRequestMatcher">
-        <constructor-arg index="0" value="${cookie.name}" />
+        <constructor-arg index="0" value="${header.name}" />
         <constructor-arg index="1" value="/sso/**" />
     </bean>
 

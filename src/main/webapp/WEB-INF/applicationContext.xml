@@ -6,6 +6,14 @@
 
     <context:property-placeholder location="WEB-INF/application.properties"/>
 
+    <bean id="apiProperties"  class="org.springframework.beans.factory.config.PropertiesFactoryBean">
+        <property name="locations">
+            <list>
+                <value>WEB-INF/api.properties</value>
+            </list>
+        </property>
+    </bean>
+
     <context:component-scan base-package="org.openactive">
         <context:exclude-filter expression="org.springframework.stereotype.Controller" type="annotation"/>
     </context:component-scan>
