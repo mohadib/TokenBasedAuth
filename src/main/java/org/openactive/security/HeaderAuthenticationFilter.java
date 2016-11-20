@@ -21,9 +21,12 @@ import java.io.IOException;
  */
 public class HeaderAuthenticationFilter extends AbstractAuthenticationProcessingFilter
 {
-  public HeaderAuthenticationFilter( HeaderRequestMatcher matcher)
+  private HeaderRequestMatcher matcher;
+
+  public HeaderAuthenticationFilter(HeaderRequestMatcher matcher)
   {
-    super( matcher );
+    super(matcher);
+    this.matcher = matcher;
   }
 
   @Override
@@ -33,8 +36,8 @@ public class HeaderAuthenticationFilter extends AbstractAuthenticationProcessing
     HttpServletResponse response
   ) throws AuthenticationException, IOException, ServletException
   {
-    Authentication authToken = new HeaderAuthentication( request.getHeader("X-JASON"), request.getRemoteAddr() );
-    return getAuthenticationManager().authenticate( authToken );
+    Authentication authToken = new HeaderAuthentication(request.getHeader(matcher.getHeaderName()), request.getRemoteAddr());
+    return getAuthenticationManager().authenticate(authToken);
   }
 
   @Override
@@ -44,9 +47,16 @@ public class HeaderAuthenticationFilter extends AbstractAuthenticationProcessing
   }
 
   @Override
-  protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authResult) throws IOException, ServletException
+  protected void successfulAuthentication
+  (
+    HttpServletRequest request,
+    HttpServletResponse response,
+    FilterChain chain,
+    Authentication authResult
+  ) throws IOException, ServletException
   {
     SecurityContextHolder.getContext().setAuthentication(authResult);
+    getRememberMeServices().loginSuccess(request, response, authResult);
     chain.doFilter(request, response);
   }
 }

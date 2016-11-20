@@ -23,6 +23,11 @@ public class HeaderRequestMatcher implements RequestMatcher
     pathmatcher = new AntPathRequestMatcher(antPath);
   }
 
+  public String getHeaderName()
+  {
+    return headerName;
+  }
+
   @Override
   public boolean matches(HttpServletRequest request)
   {

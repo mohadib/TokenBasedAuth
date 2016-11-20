@@ -17,7 +17,7 @@
     </security:authentication-manager>
 
     <bean id="headerRequestMatcher" class="org.openactive.security.HeaderRequestMatcher">
-        <constructor-arg index="0" value="X-JASON" />
+        <constructor-arg index="0" value="${cookie.name}" />
         <constructor-arg index="1" value="/sso/**" />
     </bean>
 
