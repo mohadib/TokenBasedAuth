@@ -39,7 +39,7 @@ public class HeaderAuthenticationProvider implements AuthenticationProvider
   public Authentication authenticate(Authentication authentication) throws AuthenticationException
   {
     HeaderAuthentication headerAuthentication = (HeaderAuthentication) authentication;
-    String[] tokens = decodeHeader(headerAuthentication.getCredentials().toString());
+    String[] tokens = HeaderUtil.tokenizeHeader( headerAuthentication.getCredentials().toString(), ":");
     boolean authenticated = authenticateWithTokens( tokens );
 
     if( !authenticated ) throw new BadCredentialsException("Fail");
@@ -63,18 +63,30 @@ public class HeaderAuthenticationProvider implements AuthenticationProvider
     String hexed = tokens[2];
 
     // is timestamp older than 3 seconds?!
-    long timeDelta = System.currentTimeMillis() - Long.parseLong( timestamp );
-    System.out.println(timeDelta);
-    if( timeDelta > ttl )
+    try
     {
-      System.out.println("TOO OLD " + timeDelta);
+      long timeDelta = System.currentTimeMillis() - Long.parseLong(timestamp);
+      if (timeDelta > ttl)
+      {
+        System.out.println("TOO OLD " + timeDelta);
+        return false;
+      }
+    }
+    catch ( NumberFormatException ne )
+    {
+      ne.printStackTrace();
       return false;
     }
 
     String systemKey = apiProperties.getProperty("key");
     String userKey = apiProperties.getProperty("user." + userName);
 
-    String rebuiltKey = encode(String.join(delim, userName, timestamp, userKey, systemKey));
+    if( systemKey == null || userKey == null )
+    {
+      return false;
+    }
+
+    String rebuiltKey = HeaderUtil.hashString( String.join( delim, userName, timestamp, userKey, systemKey ) );
     return rebuiltKey.equals(hexed);
   }
 
@@ -84,7 +96,8 @@ public class HeaderAuthenticationProvider implements AuthenticationProvider
     try
     {
       digest = MessageDigest.getInstance("MD5");
-    } catch (NoSuchAlgorithmException e)
+    }
+    catch (NoSuchAlgorithmException e)
     {
       throw new IllegalStateException("No MD5 algorithm available!");
     }

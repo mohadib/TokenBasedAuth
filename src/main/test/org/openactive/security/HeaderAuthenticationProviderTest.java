@@ -9,7 +9,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.config.annotation.web.configurers.ExceptionHandlingConfigurer;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.codec.Base64;
@@ -21,6 +20,7 @@ import static org.junit.Assert.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by mohadib on 11/20/16.
@@ -36,16 +36,20 @@ public class HeaderAuthenticationProviderTest
   @Value("${delim}")
   private String delim;
 
+  @Value("${user.connect}")
+  private String userKey;
+
+  @Value("${key}")
+  private String systemKey;
+
+
   @Test
   public void testAuthenticate()
   {
-    // tokens [ username : (salt)timestamp : md5hex( userName : timestamp : userKey : systemKey )
-    String timestamp = System.currentTimeMillis()+"";
-    String encoded = encode(String.join(delim, "connect", timestamp, "66B&2YXq3s$nU*5mkweB5r6BXRs%qntu", "xd^Z6Cu?X&DzrM24+zM-cFnjfjF^Y8=g"));
+    String headerValue = HeaderUtil.createHeader( "connect",userKey, systemKey, ":", delim );
+    System.out.println(headerValue);
 
-    String cookieValue = new String(Base64.encode( String.join(":", "connect", timestamp, encoded).getBytes() ));
-    System.out.println(cookieValue);
-    HeaderAuthentication ha = new HeaderAuthentication(  cookieValue, "10.0.5.2");
+    HeaderAuthentication ha = new HeaderAuthentication(  headerValue, "10.0.5.2");
     Authentication full = headerAuthenticationProvider.authenticate( ha );
 
     assertNotNull( full );
@@ -58,32 +62,19 @@ public class HeaderAuthenticationProviderTest
 
 
   @Test(expected = BadCredentialsException.class)
-  public void testTooOldFailAuthenticate()
+  public void testTooOldFailAuthenticate() throws InterruptedException
   {
-    // tokens [ username : (salt)timestamp : md5hex( userName : timestamp : userKey : systemKey )
-    String timestamp = System.currentTimeMillis()+"";
-    String encoded = encode(String.join(delim, "connect", timestamp, "66B&2YXq3s$nU*5mkweB5r6BXRs%qntu", "xd^Z6Cu?X&DzrM24+zM-cFnjfjF^Y8=g"));
-
-    String cookieValue = new String(Base64.encode( String.join(":", "connect", timestamp, encoded).getBytes() ));
-    System.out.println(cookieValue);
-    HeaderAuthentication ha = new HeaderAuthentication(  cookieValue, "10.0.5.2");
-
-    try { Thread.sleep(3100); }catch ( Exception e){}
-
+    String headerValue = HeaderUtil.createHeader( "connect",userKey, systemKey, ":", delim );
+    TimeUnit.SECONDS.sleep(3);
+    HeaderAuthentication ha = new HeaderAuthentication(  headerValue, "10.0.5.2");
     Authentication full = headerAuthenticationProvider.authenticate( ha );
   }
 
   @Test(expected = BadCredentialsException.class)
   public void testFailAuthenticate()
   {
-    // tokens [ username : (salt)timestamp : md5hex( userName : timestamp : userKey : systemKey )
-    String timestamp = System.currentTimeMillis()+"";
-    String encoded = encode(String.join(delim, "connect", timestamp, "BAD66B&2YXq3s$nU*5mkweB5r6BXRs%qntu", "xd^Z6Cu?X&DzrM24+zM-cFnjfjF^Y8=g"));
-
-    String cookieValue = new String(Base64.encode( String.join(":", "connect", timestamp, encoded).getBytes() ));
-
-    System.out.println(cookieValue);
-    HeaderAuthentication ha = new HeaderAuthentication(  cookieValue, "10.0.5.2");
+    String headerValue = HeaderUtil.createHeader( "connect",userKey +"ZZ", systemKey, ":", delim );
+    HeaderAuthentication ha = new HeaderAuthentication( headerValue, "10.0.5.2");
     Authentication full = headerAuthenticationProvider.authenticate( ha );
   }
 
@@ -91,20 +82,6 @@ public class HeaderAuthenticationProviderTest
   public void testFailAuthenticateUnsupportedToken()
   {
     assertFalse( headerAuthenticationProvider.supports(UsernamePasswordAuthenticationToken.class));
-  }
-
-  private String encode(String key)
-  {
-    MessageDigest digest;
-    try
-    {
-      digest = MessageDigest.getInstance("MD5");
-    }
-    catch (NoSuchAlgorithmException e)
-    {
-      throw new IllegalStateException("No MD5 algorithm available!");
-    }
-    return new String( Hex.encode( digest.digest( key.getBytes() ) ) );
   }
 
   @Configuration
